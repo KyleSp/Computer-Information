@@ -56,37 +56,55 @@ function getSystemUpTime() {
     return $array
 }
 
-function refresh() {
+function getInfo([ref] $labelTexts) {
     "Refresh" | Out-Host
+    
+    #host name
+    $labelTexts.Value[0] = getHostName
+
+    #ip address (ethernet)
+    $labelTexts.Value[1] = getIPAddr "Ethernet"
+
+    #ip address (wi-fi)
+    $labelTexts.Value[2] = getIPAddr "Wi-Fi"
+
+    #C drive info
+    $driveInfo = getDriveInfo "C"
+    $labelTexts.Value[3] = $driveInfo[0]
+    $labelTexts.Value[4] = $driveInfo[1]
+    $labelTexts.Value[5] = $driveInfo[2]
+
+    #system uptime
+    $upTimeInfo = getSystemUpTime
+    $labelTexts.Value[6] = $upTimeInfo[0]
+    $labelTexts.Value[7] = $upTimeInfo[1]
+    $labelTexts.Value[8] = $upTimeInfo[2]
+}
+
+function refresh([ref] $labelTexts, [ref] $labels) {
+    getInfo ($labelTexts)
+
+
+#    for ($i = 0; $i -lt $labels.Value.Length; ++$i) {
+        <#
+        $index = $labelTexts.Value[$i].IndexOf("`t")
+        $text = $labelTexts.Value[$i] -replace "`t", ""
+        $labels.Value[$i * 2].Text = $text.Substring(0, $index)
+        $labels.Value[$i * 2 + 1].Text = $text.Substring($index)
+        #>
+#        $labels.Value[$i * 2].Text = "first"
+#        $labels.Value[$i * 2 + 1].Text = "second"
+#    }
+
+    #Clear-Host
+    #$labelTexts.Value | Out-Host
 }
 
 #-------------------------------------------------------
 
-$text = ""
+$labelTexts = @("") * 9
 
-#host name
-$hostName = getHostName
-
-#ip address (ethernet)
-$textIPAddrEthernet = getIPAddr "Ethernet"
-
-#ip address (wi-fi)
-$textIPAddrWiFi = getIPAddr "Wi-Fi"
-
-#C drive info
-$driveInfo = getDriveInfo "C"
-$textDriveUsed = $driveInfo[0]
-$textDriveFree = $driveInfo[1]
-$textDrivePercentFree = $driveInfo[2]
-
-#system uptime
-$upTimeInfo = getSystemUpTime
-$textCurrentTime = $upTimeInfo[0]
-$textLastBootupTime = $upTimeInfo[1]
-$textUpTime = $upTimeInfo[2]
-
-#$text | Out-Host
-#$text | Add-Content $PSScriptRoot\ComputerInfo.txt
+getInfo ([ref] $labelTexts)
 
 
 #-------------------------------------------------------
@@ -112,6 +130,9 @@ $form.StartPosition = "CenterScreen"
 #prevent resizing of window
 $form.FormBorderStyle = "FixedDialog"
 
+#$labels = @() * 18
+$labels = @()
+
 #menu
 $menu = New-Object System.Windows.Forms.MenuStrip
 $menuFile = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -128,7 +149,18 @@ $menuFile.DropDownItems.Add($menuExit)
 
 $menuRefresh = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuRefresh.Text = "Refresh"
-$menuRefresh.Add_Click({refresh})
+$menuRefresh.Add_Click({
+    refresh ([ref] $labelTexts) ([ref] $labels)
+
+    for ($i = 0; $i -lt $labels.Length; ++$i) {
+        $index = $labelTexts[$i].IndexOf("`t")
+        $text = $labelTexts[$i] -replace "`t", ""
+        $labels[$i * 2].Text = $text.Substring(0, $index)
+        $labels[$i * 2 + 1].Text = $text.Substring($index)
+    }
+
+    Clear-Host
+})
 $menuFile.DropDownItems.Add($menuRefresh)
 #endregion
 
@@ -148,18 +180,6 @@ $form.Controls.Add($menu)
 Clear-Host
 
 #add labels
-$labelTexts = @(
-    $textHostName,
-    $textIPAddrEthernet,
-    $textIPAddrWiFi,
-    $textDriveUsed,
-    $textDriveFree,
-    $textDrivePercentFree,
-    $textCurrentTime,
-    $textLastBootupTime,
-    $textUpTime
-)
-
 for ($i = 0; $i -lt $labelTexts.Length; ++$i) {
     #make labels
     $label1 = New-Object System.Windows.Forms.Label
@@ -179,6 +199,9 @@ for ($i = 0; $i -lt $labelTexts.Length; ++$i) {
     $label2.Location = New-Object System.Drawing.Size(210, $loc)
 
     #add labels to window
+    $labels += $label1
+    $labels += $label2
+
     $form.Controls.Add($label1)
     $form.Controls.Add($label2)
 }
