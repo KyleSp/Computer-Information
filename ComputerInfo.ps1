@@ -2,10 +2,16 @@
     Made by Kyle Spurlock
 #>
 
+#-------------------------------------------------------
+#constants
+$NUM_LABEL_TEXTS = 12
+$WINDOW_SIZE_Y = 400
+$LABEL_SIZE_Y = 25
 $FONT = New-Object System.Drawing.Font("Arial", 12)
 $FONT_BOLD = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
 
 #-------------------------------------------------------
+#functions
 
 function getHostName() {
     $hostName = $env:USERNAME
@@ -33,10 +39,12 @@ function getIPAddr([string] $type) {
 
 function getDriveInfo([string] $drive) {
     $driveInfo = Get-PSDrive | Where-Object {$_.Name -eq $drive} | Out-String
+    
     $driveUsed = $driveInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[13]
     $driveFree = $driveInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[14]
     $drivePercentFree = ([double] $driveFree) / (([double] $driveFree) + ([double] $driveUsed))
     $drivePercentFree = [math]::Round($drivePercentFree * 100, 2)
+    
     $textDriveUsed = "$drive Drive (Used):`t`t`t$driveUsed GB`n"
     $textDriveFree = "$drive Drive (Free):`t`t`t$driveFree GB`n"
     $textDrivePercentFree = "$drive Drive % Free:`t`t`t$drivePercentFree %`n"
@@ -47,10 +55,13 @@ function getDriveInfo([string] $drive) {
 
 function getSystemUpTime() {
     $opSysInst = Get-CimInstance Win32_OperatingSystem
+    
     $currentTime = $opSysInst.LocalDateTime
     $lastBootupTime = $opSysInst.LastBootUpTime
+    
     $upTime = ($currentTime - $lastBootUpTime).ToString()
     $upTime = $uptime.Substring(0, $uptime.length - 8)
+    
     $textCurrentTime = "Current Time:`t`t`t$currentTime`n"
     $textLastBootupTime = "Last Bootup Time:`t`t$lastBootupTime`n"
     $textUpTime = "Up Time:`t`t`t`t$upTime`n"
@@ -59,7 +70,30 @@ function getSystemUpTime() {
     return $array
 }
 
-function getInfo([ref] $labelTexts) {
+function getProcessor() {
+    $getProc = Get-WmiObject -Class Win32_Processor
+
+    $systemNameInfo = $getProc | Select SystemName | Out-String
+    $systemName = $systemNameInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[2]
+    $systemName = $systemName -replace "`n", ""
+
+    $numCoresInfo = $getProc | Select NumberOfCores | Out-String
+    $numCores = $numCoresInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[1]
+    $numCores = $numCores -replace "`n", ""
+
+    $processorNameInfo = $getProc | Select Name | Out-String
+    $processorName = $processorNameInfo.Split("`n", [System.StringSplitOptions]::RemoveEmptyEntries)[3]
+    $processorName = $processorName -replace "`n", ""
+
+    $textSystemName = "System Name:`t`t`t$systemName`n"
+    $textNumCores = "Number of Cores:`t`t$numCores`n"
+    $textProcessorName = "Processor Name:`t`t`t$processorName`n"
+
+    $array = @($textSystemName, $textNumCores, $textProcessorName)
+    return $array
+}
+
+function getInfo([ref] $labelTexts, [boolean] $skipGetProcessor = $false) {
     #host name
     $labelTexts.Value[0] = getHostName
 
@@ -80,18 +114,26 @@ function getInfo([ref] $labelTexts) {
     $labelTexts.Value[6] = $upTimeInfo[0]
     $labelTexts.Value[7] = $upTimeInfo[1]
     $labelTexts.Value[8] = $upTimeInfo[2]
+
+    #get processor info
+    if (!$skipGetProcessor) {
+        $processorInfo = getProcessor
+        $labelTexts.Value[9] = $processorInfo[0]
+        $labelTexts.Value[10] = $processorInfo[1]
+        $labelTexts.Value[11] = $processorInfo[2]
+    }
 }
 
 function refresh([ref] $labelTexts) {
     "Refresh" | Out-Host
     
-    getInfo ($labelTexts)
+    getInfo $labelTexts $true
 }
 
 function about() {
     "About" | Out-Host
 
-    #make about window
+    #about window
     $aboutForm = New-Object Windows.Forms.Form
     $aboutForm.text = "About"
     $aboutForm.Font = $FONT
@@ -100,7 +142,7 @@ function about() {
     $aboutForm.FormBorderStyle = "FixedDialog"
     $aboutForm.MaximizeBox = $false
 
-    #make title label
+    #title label
     $labelTitle = New-Object System.Windows.Forms.Label
     $labelTitle.Text = "Made by Kyle Spurlock"
     $labelTitle.Font = $FONT_BOLD
@@ -108,7 +150,7 @@ function about() {
     $labelTitle.Location = New-Object System.Drawing.Size(10, 25)
     $aboutForm.Controls.Add($labelTitle)
 
-    #make version label
+    #version label
     $labelVersion = New-Object System.Windows.Forms.Label
     $labelVersion.Text = "Version 1.0.0"
     $labelVersion.Size = New-Object System.Drawing.Size(200, 25)
@@ -120,13 +162,13 @@ function about() {
 
 #-------------------------------------------------------
 
-$labelTexts = @("") * 9
+$labelTexts = @("") * $NUM_LABEL_TEXTS
 
 getInfo ([ref] $labelTexts)
 
 
 #-------------------------------------------------------
-#make gui
+#gui
 
 Add-Type -AssemblyName System.Windows.Forms
 
@@ -140,7 +182,7 @@ $form.text = "Computer Information"
 $form.Font = $FONT
 
 #set size of window
-$form.Size = New-Object Drawing.Size @(400, 300)
+$form.Size = New-Object Drawing.Size @(400, $WINDOW_SIZE_Y)
 
 #set position of window
 $form.StartPosition = "CenterScreen"
@@ -149,7 +191,6 @@ $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
 
-#$labels = @() * 18
 $labels = @()
 
 #menu
@@ -210,10 +251,24 @@ for ($i = 0; $i -lt $labelTexts.Length; ++$i) {
     $label1.Font = $FONT_BOLD
 
     #set label location and size
-    $loc = $i * 25 + 35
-    $label1.Size = New-Object System.Drawing.Size(200, 25)
+    #$loc = $i * $LABEL_SIZE_Y + 35
+    $loc = 35
+    for ($j = 0; $j -lt $i * 2; ++$j) {
+        if ($j % 2 -ne 0) {
+            $loc += $labels[$j].Size.Height
+        }
+    }
+
+    $sizeMult = [int] ($label2.Text.Length / 20)
+    if ($sizeMult -eq 0) {
+        $sizeMult = 1
+    }
+
+    $size = $LABEL_SIZE_Y * $sizeMult
+
+    $label1.Size = New-Object System.Drawing.Size(200, $size)
     $label1.Location = New-Object System.Drawing.Size(10, $loc)
-    $label2.Size = New-Object System.Drawing.Size(200, 25)
+    $label2.Size = New-Object System.Drawing.Size(200, $size)
     $label2.Location = New-Object System.Drawing.Size(210, $loc)
 
     #add labels to window
