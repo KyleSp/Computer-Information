@@ -15,7 +15,7 @@ $FONT_BOLD = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontSty
 
 function getHostName() {
     $hostName = $env:USERNAME
-    $textHostName = "Host Name:`t`t`t`t$hostName`n"
+    $textHostName = "Host Name:`t`t`t$hostName`n"
     return $textHostName
 }
 
@@ -25,12 +25,12 @@ function getIPAddr([string] $type) {
     if ($type -eq "Ethernet") {
         $ipInfoEthernet = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Ethernet" -and $_.AddressFamily -eq "IPv4"} | Select IPAddress | Out-String
         $ipAddrEthernet = $ipInfoEthernet.Split((" ", "`n"), [System.StringSplitOptions]::RemoveEmptyEntries)[5]
-        $textIPAddrEthernet = "IP Address (Ethernet):`t$ipAddrEthernet`n"
+        $textIPAddrEthernet = "IP Address (Ethernet):`t`t$ipAddrEthernet"
         return $textIPAddrEthernet
     } elseif ($type -eq "Wi-Fi") {
         $ipInfoWiFi = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Wi-Fi" -and $_.AddressFamily -eq "IPv4"} | Select IPAddress | Out-String
         $ipAddrWiFi = $ipInfoWiFi.Split((" ", "`n"), [System.StringSplitOptions]::RemoveEmptyEntries)[5]
-        $textIPAddrWiFi = "IP Address (Wi-Fi):`t`t$ipAddrWiFi`n"
+        $textIPAddrWiFi = "IP Address (Wi-Fi):`t`t$ipAddrWiFi"
         return $textIPAddrWiFi
     } else {
         return ""
@@ -64,7 +64,7 @@ function getSystemUpTime() {
     
     $textCurrentTime = "Current Time:`t`t`t$currentTime`n"
     $textLastBootupTime = "Last Bootup Time:`t`t$lastBootupTime`n"
-    $textUpTime = "Up Time:`t`t`t`t$upTime`n"
+    $textUpTime = "Up Time:`t`t`t$upTime`n"
 
     $array = @($textCurrentTime, $textLastBootupTime, $textUpTime)
     return $array
@@ -85,9 +85,9 @@ function getProcessor() {
     $processorName = $processorNameInfo.Split("`n", [System.StringSplitOptions]::RemoveEmptyEntries)[3]
     $processorName = $processorName -replace "`n", ""
 
-    $textSystemName = "System Name:`t`t`t$systemName`n"
-    $textNumCores = "Number of Cores:`t`t$numCores`n"
-    $textProcessorName = "Processor Name:`t`t`t$processorName`n"
+    $textSystemName = "System Name:`t`t`t$systemName"
+    $textNumCores = "Number of Cores:`t`t$numCores"
+    $textProcessorName = "Processor Name:`t`t`t$processorName"
 
     $array = @($textSystemName, $textNumCores, $textProcessorName)
     return $array
@@ -135,7 +135,7 @@ function about() {
 
     #about window
     $aboutForm = New-Object Windows.Forms.Form
-    $aboutForm.text = "About"
+    $aboutForm.Text = "About"
     $aboutForm.Font = $FONT
     $aboutForm.Size = New-Object Drawing.Size @(200, 200)
     $aboutForm.StartPosition = "CenterScreen"
@@ -160,6 +160,52 @@ function about() {
     $aboutForm.ShowDialog()
 }
 
+function save([System.Array] $labelTexts) {
+    "Save" | Out-Host
+
+    #save window
+    $saveForm = New-Object Windows.Forms.Form
+    $saveForm.Text = "Save"
+    $saveForm.Font = $FONT
+    $saveForm.Size = New-Object Drawing.Size @(100, 100)
+    $saveForm.StartPosition = "CenterScreen"
+    $saveForm.FormBorderStyle = "FixedDialog"
+    $saveForm.MaximizeBox = $false
+
+    #save textbox
+    $textboxFile = New-Object Windows.Forms.TextBox
+    $textboxFile.Text = ""
+    $textboxFile.Size = New-Object Drawing.Size @(100, 15)
+    $textboxFile.Location = New-Object Drawing.Size @(5, 5)
+    $saveForm.Controls.Add($textboxFile)
+
+    #save button
+    $buttonSave = New-Object Windows.Forms.Button
+    $buttonSave.Text = "Save"
+    $buttonSave.Add_Click({
+        saveButtonClick $labelTexts $textboxFile.Text;
+        $textboxFile.Text = "";
+        $saveForm.Close()
+    })
+    $buttonSave.Size = New-Object Drawing.Size @(85, 25)
+    $buttonSave.Location = New-Object Drawing.Size @(5, 35)
+    $saveForm.Controls.Add($buttonSave)
+
+    $saveForm.ShowDialog()
+}
+
+function saveButtonClick([System.Array] $labelTexts, [String] $fileLoc) {
+    if ($fileLoc -eq "") {
+        $fileLoc = "backup"
+    } elseif ($fileLoc -match ".txt") {
+        $fileLoc = $fileLoc.Substring(0, $fileLoc.Length - 4)
+    }
+
+    $fileLoc += ".txt"
+    
+    Set-Content "$PSScriptRoot\$fileLoc" $labelTexts
+}
+
 #-------------------------------------------------------
 
 $labelTexts = @("") * $NUM_LABEL_TEXTS
@@ -176,7 +222,7 @@ Add-Type -AssemblyName System.Windows.Forms
 $form = New-Object Windows.Forms.Form
 
 #set window text
-$form.text = "Computer Information"
+$form.Text = "Computer Information"
 
 #set window font size
 $form.Font = $FONT
@@ -202,10 +248,10 @@ $menuHelp = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuFile.Text = "File"
 $menu.Items.Add($menuFile)
 
-$menuExit = New-Object System.Windows.Forms.ToolStripMenuItem
-$menuExit.Text = "Exit"
-$menuExit.Add_Click({$form.Close()})
-$menuFile.DropDownItems.Add($menuExit)
+$menuSave = New-Object System.Windows.Forms.ToolStripMenuItem
+$menuSave.Text = "Save"
+$menuSave.Add_Click({save $labelTexts})
+$menuFile.DropDownItems.Add($menuSave)
 
 $menuRefresh = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuRefresh.Text = "Refresh"
@@ -219,6 +265,11 @@ $menuRefresh.Add_Click({
     }
 })
 $menuFile.DropDownItems.Add($menuRefresh)
+
+$menuExit = New-Object System.Windows.Forms.ToolStripMenuItem
+$menuExit.Text = "Exit"
+$menuExit.Add_Click({$form.Close()})
+$menuFile.DropDownItems.Add($menuExit)
 #endregion
 
 #region help
