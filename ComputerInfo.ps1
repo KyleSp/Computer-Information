@@ -2,6 +2,9 @@
     Made by Kyle Spurlock
 #>
 
+$FONT = New-Object System.Drawing.Font("Arial", 12)
+$FONT_BOLD = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
+
 #-------------------------------------------------------
 
 function getHostName() {
@@ -33,7 +36,7 @@ function getDriveInfo([string] $drive) {
     $driveUsed = $driveInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[13]
     $driveFree = $driveInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[14]
     $drivePercentFree = ([double] $driveFree) / (([double] $driveFree) + ([double] $driveUsed))
-    $drivePercentFree = [math]::Round($drivePercentFree, 2)
+    $drivePercentFree = [math]::Round($drivePercentFree * 100, 2)
     $textDriveUsed = "$drive Drive (Used):`t`t`t$driveUsed GB`n"
     $textDriveFree = "$drive Drive (Free):`t`t`t$driveFree GB`n"
     $textDrivePercentFree = "$drive Drive % Free:`t`t`t$drivePercentFree %`n"
@@ -57,8 +60,6 @@ function getSystemUpTime() {
 }
 
 function getInfo([ref] $labelTexts) {
-    "Refresh" | Out-Host
-    
     #host name
     $labelTexts.Value[0] = getHostName
 
@@ -81,23 +82,40 @@ function getInfo([ref] $labelTexts) {
     $labelTexts.Value[8] = $upTimeInfo[2]
 }
 
-function refresh([ref] $labelTexts, [ref] $labels) {
+function refresh([ref] $labelTexts) {
+    "Refresh" | Out-Host
+    
     getInfo ($labelTexts)
+}
 
+function about() {
+    "About" | Out-Host
 
-#    for ($i = 0; $i -lt $labels.Value.Length; ++$i) {
-        <#
-        $index = $labelTexts.Value[$i].IndexOf("`t")
-        $text = $labelTexts.Value[$i] -replace "`t", ""
-        $labels.Value[$i * 2].Text = $text.Substring(0, $index)
-        $labels.Value[$i * 2 + 1].Text = $text.Substring($index)
-        #>
-#        $labels.Value[$i * 2].Text = "first"
-#        $labels.Value[$i * 2 + 1].Text = "second"
-#    }
+    #make about window
+    $aboutForm = New-Object Windows.Forms.Form
+    $aboutForm.text = "About"
+    $aboutForm.Font = $FONT
+    $aboutForm.Size = New-Object Drawing.Size @(200, 200)
+    $aboutForm.StartPosition = "CenterScreen"
+    $aboutForm.FormBorderStyle = "FixedDialog"
+    $aboutForm.MaximizeBox = $false
 
-    #Clear-Host
-    #$labelTexts.Value | Out-Host
+    #make title label
+    $labelTitle = New-Object System.Windows.Forms.Label
+    $labelTitle.Text = "Made by Kyle Spurlock"
+    $labelTitle.Font = $FONT_BOLD
+    $labelTitle.Size = New-Object System.Drawing.Size(200, 25)
+    $labelTitle.Location = New-Object System.Drawing.Size(10, 25)
+    $aboutForm.Controls.Add($labelTitle)
+
+    #make version label
+    $labelVersion = New-Object System.Windows.Forms.Label
+    $labelVersion.Text = "Version 1.0.0"
+    $labelVersion.Size = New-Object System.Drawing.Size(200, 25)
+    $labelVersion.Location = New-Object System.Drawing.Size(45, 50)
+    $aboutForm.Controls.Add($labelVersion)
+
+    $aboutForm.ShowDialog()
 }
 
 #-------------------------------------------------------
@@ -119,7 +137,7 @@ $form = New-Object Windows.Forms.Form
 $form.text = "Computer Information"
 
 #set window font size
-$form.Font = New-Object System.Drawing.Font("Arial", 12)
+$form.Font = $FONT
 
 #set size of window
 $form.Size = New-Object Drawing.Size @(400, 300)
@@ -129,6 +147,7 @@ $form.StartPosition = "CenterScreen"
 
 #prevent resizing of window
 $form.FormBorderStyle = "FixedDialog"
+$form.MaximizeBox = $false
 
 #$labels = @() * 18
 $labels = @()
@@ -150,16 +169,13 @@ $menuFile.DropDownItems.Add($menuExit)
 $menuRefresh = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuRefresh.Text = "Refresh"
 $menuRefresh.Add_Click({
-    refresh ([ref] $labelTexts) ([ref] $labels)
+    refresh ([ref] $labelTexts)
 
-    for ($i = 0; $i -lt $labels.Length; ++$i) {
+    for ($i = 0; $i -lt $labelTexts.Length; ++$i) {
         $index = $labelTexts[$i].IndexOf("`t")
         $text = $labelTexts[$i] -replace "`t", ""
-        $labels[$i * 2].Text = $text.Substring(0, $index)
         $labels[$i * 2 + 1].Text = $text.Substring($index)
     }
-
-    Clear-Host
 })
 $menuFile.DropDownItems.Add($menuRefresh)
 #endregion
@@ -170,7 +186,7 @@ $menu.Items.Add($menuHelp)
 
 $menuAbout = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuAbout.Text = "About"
-$menuAbout.Add_Click({"About" | Out-Host})
+$menuAbout.Add_Click({about})
 $menuHelp.DropDownItems.Add($menuAbout)
 #endregion
 
@@ -190,6 +206,8 @@ for ($i = 0; $i -lt $labelTexts.Length; ++$i) {
     $text = $labelTexts[$i] -replace "`t", ""
     $label1.Text = $text.Substring(0, $index)
     $label2.Text = $text.Substring($index)
+
+    $label1.Font = $FONT_BOLD
 
     #set label location and size
     $loc = $i * 25 + 35
