@@ -3,6 +3,12 @@
 #>
 
 #-------------------------------------------------------
+#imports
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+#-------------------------------------------------------
 #constants
 
 $NUM_LABEL_TEXTS = 12
@@ -25,7 +31,7 @@ function getIPAddr([string] $type) {
     $textIPAddr = ""
 
     if ($type -eq "Ethernet") {
-        $ipInfoEnthernet = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Ethernet" -and $_.AddressFamily -eq "IPv4"}
+        $ipInfoEthernet = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Ethernet" -and $_.AddressFamily -eq "IPv4"}
         $ipAddrEthernet = $ipInfoEthernet.IPAddress
         $textIPAddr = "IP Address (Ethernet):`t`t$ipAddrEthernet"
     } elseif ($type -eq "Wi-Fi") {
@@ -80,7 +86,7 @@ function getProcessor() {
 
     $systemName = $getProc.SystemName
 
-    $numCores = $numCoresInfo.NumberOfCores
+    $numCores = $getProc.NumberOfCores
 
     $processorName = $getProc.Name
 
@@ -223,8 +229,6 @@ getInfo ([ref] $labelTexts)
 #-------------------------------------------------------
 #gui
 
-Add-Type -AssemblyName System.Windows.Forms
-
 #new window
 $form = New-Object Windows.Forms.Form
 
@@ -235,7 +239,7 @@ $form.Text = "Computer Information"
 $form.Font = $FONT
 
 #set size of window
-$form.Size = New-Object Drawing.Size @(400, $WINDOW_SIZE_Y)
+$form.Size = New-Object Drawing.Size @(420, $WINDOW_SIZE_Y)
 
 #set position of window
 $form.StartPosition = "CenterScreen"
