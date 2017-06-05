@@ -4,6 +4,7 @@
 
 #-------------------------------------------------------
 #constants
+
 $NUM_LABEL_TEXTS = 12
 $WINDOW_SIZE_Y = 400
 $LABEL_SIZE_Y = 25
@@ -21,30 +22,34 @@ function getHostName() {
 
 function getIPAddr([string] $type) {
     $ipInfo = Get-NetIPAddress
-    
+    $textIPAddr = ""
+
     if ($type -eq "Ethernet") {
-        $ipInfoEthernet = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Ethernet" -and $_.AddressFamily -eq "IPv4"} | Select IPAddress | Out-String
-        $ipAddrEthernet = $ipInfoEthernet.Split((" ", "`n"), [System.StringSplitOptions]::RemoveEmptyEntries)[5]
-        $textIPAddrEthernet = "IP Address (Ethernet):`t`t$ipAddrEthernet"
-        return $textIPAddrEthernet
+        $ipInfoEnthernet = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Ethernet" -and $_.AddressFamily -eq "IPv4"}
+        $ipAddrEthernet = $ipInfoEthernet.IPAddress
+        $textIPAddr = "IP Address (Ethernet):`t`t$ipAddrEthernet"
     } elseif ($type -eq "Wi-Fi") {
-        $ipInfoWiFi = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Wi-Fi" -and $_.AddressFamily -eq "IPv4"} | Select IPAddress | Out-String
-        $ipAddrWiFi = $ipInfoWiFi.Split((" ", "`n"), [System.StringSplitOptions]::RemoveEmptyEntries)[5]
-        $textIPAddrWiFi = "IP Address (Wi-Fi):`t`t$ipAddrWiFi"
-        return $textIPAddrWiFi
-    } else {
-        return ""
+        $ipInfoWiFi = $ipInfo | Where-Object {$_.InterfaceAlias -eq "Wi-Fi" -and $_.AddressFamily -eq "IPv4"}
+        $ipAddrWiFi = $ipInfoWiFi.IPAddress
+        $textIPAddr = "IP Address (Wi-Fi):`t`t$ipAddrWiFi"
     }
+
+    return $textIPAddr
 }
 
 function getDriveInfo([string] $drive) {
-    $driveInfo = Get-PSDrive | Where-Object {$_.Name -eq $drive} | Out-String
-    
-    $driveUsed = $driveInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[13]
-    $driveFree = $driveInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[14]
+    $driveInfo = Get-PSDrive | Where-Object {$_.Name -eq $drive}
+
+    #convert from B to GB
+    $driveUsed = $driveInfo.Used / 1GB
+    $driveFree = $driveInfo.Free / 1GB
+
     $drivePercentFree = ([double] $driveFree) / (([double] $driveFree) + ([double] $driveUsed))
     $drivePercentFree = [math]::Round($drivePercentFree * 100, 2)
     
+    $driveUsed = [math]::Round($driveUsed, 2)
+    $driveFree = [math]::Round($driveFree, 2)
+
     $textDriveUsed = "$drive Drive (Used):`t`t`t$driveUsed GB`n"
     $textDriveFree = "$drive Drive (Free):`t`t`t$driveFree GB`n"
     $textDrivePercentFree = "$drive Drive % Free:`t`t`t$drivePercentFree %`n"
@@ -73,17 +78,11 @@ function getSystemUpTime() {
 function getProcessor() {
     $getProc = Get-WmiObject -Class Win32_Processor
 
-    $systemNameInfo = $getProc | Select SystemName | Out-String
-    $systemName = $systemNameInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[2]
-    $systemName = $systemName -replace "`n", ""
+    $systemName = $getProc.SystemName
 
-    $numCoresInfo = $getProc | Select NumberOfCores | Out-String
-    $numCores = $numCoresInfo.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)[1]
-    $numCores = $numCores -replace "`n", ""
+    $numCores = $numCoresInfo.NumberOfCores
 
-    $processorNameInfo = $getProc | Select Name | Out-String
-    $processorName = $processorNameInfo.Split("`n", [System.StringSplitOptions]::RemoveEmptyEntries)[3]
-    $processorName = $processorName -replace "`n", ""
+    $processorName = $getProc.Name
 
     $textSystemName = "System Name:`t`t`t$systemName"
     $textNumCores = "Number of Cores:`t`t$numCores"
@@ -137,7 +136,7 @@ function about() {
     $aboutForm = New-Object Windows.Forms.Form
     $aboutForm.Text = "About"
     $aboutForm.Font = $FONT
-    $aboutForm.Size = New-Object Drawing.Size @(200, 200)
+    $aboutForm.Size = New-Object Drawing.Size @(200, 125)
     $aboutForm.StartPosition = "CenterScreen"
     $aboutForm.FormBorderStyle = "FixedDialog"
     $aboutForm.MaximizeBox = $false
@@ -147,7 +146,7 @@ function about() {
     $labelTitle.Text = "Made by Kyle Spurlock"
     $labelTitle.Font = $FONT_BOLD
     $labelTitle.Size = New-Object System.Drawing.Size(200, 25)
-    $labelTitle.Location = New-Object System.Drawing.Size(10, 25)
+    $labelTitle.Location = New-Object System.Drawing.Size(8, 25)
     $aboutForm.Controls.Add($labelTitle)
 
     #version label
@@ -167,16 +166,24 @@ function save([System.Array] $labelTexts) {
     $saveForm = New-Object Windows.Forms.Form
     $saveForm.Text = "Save"
     $saveForm.Font = $FONT
-    $saveForm.Size = New-Object Drawing.Size @(100, 100)
+    $saveForm.Size = New-Object Drawing.Size @(275, 115)
     $saveForm.StartPosition = "CenterScreen"
     $saveForm.FormBorderStyle = "FixedDialog"
     $saveForm.MaximizeBox = $false
 
+    #save label
+    $labelFile = New-Object Windows.Forms.Label
+    $labelFile.Text = "Enter Filename to Save to:"
+    $labelFile.Font = $FONT_BOLD
+    $labelFile.Size = New-Object Drawing.Size @(250, 50)
+    $labelFile.Location = New-Object Drawing.Size @(5, 5)
+    $saveForm.Controls.Add($labelFile)
+
     #save textbox
     $textboxFile = New-Object Windows.Forms.TextBox
     $textboxFile.Text = ""
-    $textboxFile.Size = New-Object Drawing.Size @(100, 15)
-    $textboxFile.Location = New-Object Drawing.Size @(5, 5)
+    $textboxFile.Size = New-Object Drawing.Size @(200, 15)
+    $textboxFile.Location = New-Object Drawing.Size @(5, 55)
     $saveForm.Controls.Add($textboxFile)
 
     #save button
@@ -187,8 +194,8 @@ function save([System.Array] $labelTexts) {
         $textboxFile.Text = "";
         $saveForm.Close()
     })
-    $buttonSave.Size = New-Object Drawing.Size @(85, 25)
-    $buttonSave.Location = New-Object Drawing.Size @(5, 35)
+    $buttonSave.Size = New-Object Drawing.Size @(55, 25)
+    $buttonSave.Location = New-Object Drawing.Size @(210, 55)
     $saveForm.Controls.Add($buttonSave)
 
     $saveForm.ShowDialog()
@@ -202,7 +209,7 @@ function saveButtonClick([System.Array] $labelTexts, [String] $fileLoc) {
     }
 
     $fileLoc += ".txt"
-    
+
     Set-Content "$PSScriptRoot\$fileLoc" $labelTexts
 }
 
@@ -237,6 +244,9 @@ $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
 
+$form.KeyPreview = $true
+$form.Add_KeyDown({if ($_.KeyCode -eq "Escape") {$form.Close()}})
+
 $labels = @()
 
 #menu
@@ -251,6 +261,7 @@ $menu.Items.Add($menuFile)
 $menuSave = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuSave.Text = "Save"
 $menuSave.Add_Click({save $labelTexts})
+$menuSave.ShortcutKeys = "Control, S"
 $menuFile.DropDownItems.Add($menuSave)
 
 $menuRefresh = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -264,11 +275,13 @@ $menuRefresh.Add_Click({
         $labels[$i * 2 + 1].Text = $text.Substring($index)
     }
 })
+$menuRefresh.ShortcutKeys = "Control, R"
 $menuFile.DropDownItems.Add($menuRefresh)
 
 $menuExit = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuExit.Text = "Exit"
 $menuExit.Add_Click({$form.Close()})
+$menuExit.ShortcutKeys = "Alt, F4"
 $menuFile.DropDownItems.Add($menuExit)
 #endregion
 
@@ -279,6 +292,7 @@ $menu.Items.Add($menuHelp)
 $menuAbout = New-Object System.Windows.Forms.ToolStripMenuItem
 $menuAbout.Text = "About"
 $menuAbout.Add_Click({about})
+$menuAbout.ShortcutKeys = "Control, A"
 $menuHelp.DropDownItems.Add($menuAbout)
 #endregion
 
@@ -302,7 +316,6 @@ for ($i = 0; $i -lt $labelTexts.Length; ++$i) {
     $label1.Font = $FONT_BOLD
 
     #set label location and size
-    #$loc = $i * $LABEL_SIZE_Y + 35
     $loc = 35
     for ($j = 0; $j -lt $i * 2; ++$j) {
         if ($j % 2 -ne 0) {
